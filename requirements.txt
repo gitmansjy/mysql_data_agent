@@ -1,5 +1,10 @@
+
+numpy
+pandas==2.2.0
 dashscope==1.14.0
 langchain==0.1.17
+streamlit==1.30.0
+...
 pandas==2.2.0
 matplotlib==3.8.0
 colorama==0.4.6
