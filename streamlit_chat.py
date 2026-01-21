@@ -3,6 +3,7 @@ import io
 import re
 import streamlit as st
 import pandas as pd
+from datetime import datetime
 from qwen_llm import Qwen
 from sqlalchemy import create_engine, inspect
 from datetime import datetime
@@ -278,6 +279,9 @@ with left:
                 # 若构建摘要失败则忽略，不阻塞主流程
                 pass
         conversation = "\n".join(conv_lines)
+        # 显式加入当前时间，确保模型能看到今天的日期
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        conversation = f"当前时间：{current_time}\n" + conversation
 
         api_key = CONFIG_API_KEY or os.getenv('DASHSCOPE_API_KEY')
         if not api_key:
@@ -330,7 +334,6 @@ with left:
                         need_sql = False
                     else:
                         need_sql = bool(generate_sql) or explicit_sql_request
-                    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                     generated_sql = ""
                     if not need_sql:
                         # 更保守的意图检测：只有当用户明确要求查询数据库、写 SQL、或指定表名时才返回 SQL。
