@@ -67,10 +67,13 @@ def load_data(filepath):
     exit()
 
 def get_analysis_code(question, columns, plot_file="output_plot.png"):
+    from datetime import datetime
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     response = chain.invoke({
         "question": question,
         "columns": ", ".join(columns),
         "plot_file": plot_file,
+        "current_time": current_time,
     })
     return response['text'].strip()
 
