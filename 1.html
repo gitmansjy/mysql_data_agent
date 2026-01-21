@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>SGM 监控接入示例</title>
+    <!-- 1. 引入 SGM 监控 SDK 核心脚本（仅提供 src 与 crossOrigin） -->
+    <script src="https://sgm-static.jd.com/sgm-web-4.1.3.js" crossorigin="anonymous"></script>
+    <!--
+        SDK 配置请在下面的初始化脚本中替换为你的实际值（platform 提供的 sid/pid 等）
+        这样避免在 script 标签内使用不合法的注释或重复属性造成解析错误。
+    -->
+    <script>
+        // 尝试初始化 SGM SDK（若加载完毕则立即调用，否则轮询直到可用）
+        (function initSgm(){
+            var cfg = {
+                sid: 'your_sid',                 // 替换为你的 SID
+                pid: 'your_pid',                 // 替换为你的 PID/APPKEY
+                appName: 'demo_app',             // 替换为你的应用名称
+                userKeys: 'userId,userName',     // 需要采集的用户信息字段
+                initDomain: 'https://your-report-domain.com', // 上报域名
+                openTrace: true,
+                record: true
+            };
+            function tryInit(){
+                try{
+                    if(window.__sgm__ && typeof window.__sgm__.init === 'function'){
+                        // 如果 SDK 提供 init 方法则调用
+                        window.__sgm__.init && window.__sgm__.init(cfg);
+                        console.log('SGM SDK 已初始化（init 被调用）');
+                        return true;
+                    }
+                    // 有些 SDK 在全局暴露的是其他启动函数或命名，这里仅做保守尝试
+                    if(window.__sgm__ && window.__sgm__.onLaunch){
+                        // 若没有 init，尽量通过 onLaunch 注册回调
+                        console.log('SGM SDK 已加载，等待 onLaunch 回调');
+                        return true;
+                    }
+                }catch(e){
+                    console.warn('初始化 SGM 时出错：', e);
+                }
+                return false;
+            }
+            if(!tryInit()){
+                var tries = 0;
+                var iv = setInterval(function(){
+                    tries += 1;
+                    if(tryInit() || tries > 50){
+                        clearInterval(iv);
+                    }
+                }, 200);
+            }
+        })();
+    </script>
+</head>
+<body>
+    <h1>SGM 监控接入测试页面</h1>
+    <div style="margin:12px 0;">
+        <strong>client UUID:</strong> <span id="clientUuid">(未生成)</span>
+        <button id="regenUuid" style="margin-left:8px">重新生成 UUID</button>
+        <button id="scanUuid" style="margin-left:8px">扫描可能的 UUID</button>
+    </div>
+    <button id="testApi">测试接口监控</button>
+    <button id="testCustom">测试自定义监控</button>
+    <button id="testError">测试错误监控</button>
+
+    <script>
+        // 生成并持久化 client uuid（若浏览器支持 crypto.randomUUID 则使用）
+        (function ensureClientUuid(){
+            function genUUID(){
+                try{
+                    if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+                }catch(e){}
+                // fallback 简单实现（RFC4122 v4 风格）
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){
+                    var r = Math.random()*16|0, v = c=='x'?r:(r&0x3|0x8);
+                    return v.toString(16);
+                });
+            }
+            var key = 'my_client_uuid';
+            var uuid = localStorage.getItem(key);
+            if(!uuid){
+                uuid = genUUID();
+                try{ localStorage.setItem(key, uuid); }catch(e){}
+            }
+            // 展示在页面上
+            var el = document.getElementById('clientUuid');
+            if(el) el.textContent = uuid;
+            // 把 uuid 放入 cfg 中，若 SDK 支持 userId 或 clientId 字段则可被使用
+            try{
+                window.__sgm__ = window.__sgm__ || {};
+                window.__sgm__._injected_client_uuid = uuid;
+            }catch(e){}
+
+            // 重新生成按钮
+            document.getElementById('regenUuid').addEventListener('click', function(){
+                var nu = genUUID();
+                try{ localStorage.setItem(key, nu); }catch(e){}
+                if(el) el.textContent = nu;
+                try{ window.__sgm__._injected_client_uuid = nu; }catch(e){}
+                alert('已重新生成 UUID: ' + nu);
+            });
+
+            // 扫描 UUID 的按钮逻辑（查找 window.__sgm__, localStorage, cookie）
+            document.getElementById('scanUuid').addEventListener('click', function(){
+                var out = [];
+                var uuidRe = /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i;
+                try{
+                    // scan window.__sgm__ shallow
+                    if(window.__sgm__){
+                        for(var k in window.__sgm__){
+                            try{
+                                var v = window.__sgm__[k];
+                                if(typeof v === 'string' && uuidRe.test(v)) out.push('window.__sgm__.'+k+': '+v);
+                            }catch(e){}
+                        }
+                    }
+                }catch(e){}
+                try{
+                    for(var i=0;i<localStorage.length;i++){ var k = localStorage.key(i); var v = localStorage.getItem(k); if(uuidRe.test(v)) out.push('localStorage.'+k+': '+v); }
+                }catch(e){}
+                try{
+                    document.cookie.split(';').forEach(function(c){ if(uuidRe.test(c)) out.push('cookie: '+c.trim()); });
+                }catch(e){}
+                if(out.length===0) out.push('(未发现符合 UUID 正则的值)');
+                alert(out.join('\n'));
+            });
+        })();
+
+        // 2. 等待 SDK 初始化完成
+        window.__sgm__?.onLaunch((type) => {
+            console.log("SGM SDK 初始化完成：", type);
+        });
+
+        // 3. 测试接口监控（自动拦截 XHR/Fetch，无需额外配置）
+        document.getElementById("testApi").addEventListener("click", () => {
+            // 测试 Fetch 请求
+            fetch("https://jsonplaceholder.typicode.com/todos/1")
+                .then(res => res.json())
+                .then(data => console.log("接口请求成功：", data))
+                .catch(err => console.error("接口请求失败：", err));
+
+            // 测试 XHR 请求
+            const xhr = new XMLHttpRequest();
+            xhr.open("GET", "https://jsonplaceholder.typicode.com/todos/2");
+            xhr.send();
+            xhr.onload = () => console.log("XHR 请求成功：", xhr.responseText);
+        });
+
+        // 4. 测试自定义监控（手动上报业务数据）
+        document.getElementById("testCustom").addEventListener("click", () => {
+            window.__sgm__?.custom({
+                type: 1,               // 自定义类型，1-业务埋点，-1-性能埋点
+                code: "button_click",  // 业务标识
+                msg: "用户点击了测试按钮", // 埋点描述
+                cost1: 100,            // 自定义耗时1（如接口耗时）
+                cost2: 200,            // 自定义耗时2（如渲染耗时）
+                startTime: Date.now()  // 事件开始时间
+            }, "demo_business");       // 业务模块标识
+        });
+
+        // 5. 测试错误监控（自动捕获全局错误）
+        document.getElementById("testError").addEventListener("click", () => {
+            // 主动触发一个 JS 错误，测试 SDK 捕获能力
+            console.log(undefinedVariable);
+        });
+
+        // 6. 手动上报错误（主动捕获业务异常）
+        try {
+            // 模拟业务异常
+            throw new Error("业务逻辑异常：参数校验失败");
+        } catch (err) {
+            window.__sgm__?.error(err, "demo_error"); // 手动上报错误
+        }
+
+        // 7. 业务指标监控（如页面加载完成埋点）
+        window.addEventListener("load", () => {
+            window.__sgm__?.custom({
+                type: -1,
+                code: "page_load",
+                msg: "页面加载完成",
+                cost1: performance.timing.loadEventEnd - performance.timing.navigationStart
+            }, "page_perf");
+        });
+    </script>
+</body>
+</html>

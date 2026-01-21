@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+ENV/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.env
+config.py
+pip-log.txt
+pip-delete-this-directory.txt
+.ipynb_checkpoints/
+*.log

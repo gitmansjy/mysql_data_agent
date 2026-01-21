@@ -1,0 +1,9 @@
+dashscope==1.14.0
+langchain==0.1.17
+pandas==2.2.0
+matplotlib==3.8.0
+colorama==0.4.6
+pydantic==2.6.0
+streamlit==1.30.0
+SQLAlchemy==2.0.22
+PyMySQL==1.1.0
