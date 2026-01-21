@@ -5,7 +5,8 @@ import streamlit as st
 import pandas as pd
 from qwen_llm import Qwen
 from sqlalchemy import create_engine, inspect
-
+from datetime import datetime
+current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 # 支持从本地 config.py 读取 DB 配置（优先）
 try:
     from config import DEFAULT_DB_CONFIG  # type: ignore
@@ -334,6 +335,7 @@ with left:
                         # 更保守的意图检测：只有当用户明确要求查询数据库、写 SQL、或指定表名时才返回 SQL。
                         # 对于常见的数据分析请求（例如：描述数据、计算统计量、作图建议、解释模型结果等），请返回 NO_SQL。
                         intent_prompt = (
+                            "当前时间：" + current_time + "\n"
                             "请判断下面的用户请求是否确实需要对数据库表执行查询并返回结果。"
                             " 仅在用户明确要求：\n  - 运行或构造 SQL 查询；\n  - 指定表名或列名需要从数据库检索；\n  - 或明确写出如 '请帮我写 SQL' / '查询 <table>' 等需求时，才返回一条合法的 SELECT SQL 语句。"
                         )
@@ -361,6 +363,7 @@ with left:
                         # 给模型明确的指令，要求仅返回 SQL 查询，不要多余文字
                         # 构造 prompt：若有已加载的 DataFrame，附带数据摘要；否则只用会话上下文
                         sql_prompt = (
+                            "当前时间：" + current_time + "\n"
                             "请基于下面的对话，生成一个只包含单条 SELECT SQL 查询的语句，"
                             "仅使用目标表，并使用 CURRENT_DATE 替代当天日期相关条件。"
                         )
