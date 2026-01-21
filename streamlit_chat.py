@@ -6,7 +6,7 @@ import pandas as pd
 from qwen_llm import Qwen
 from sqlalchemy import create_engine, inspect
 from datetime import datetime
-current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
 # 支持从本地 config.py 读取 DB 配置（优先）
 try:
     from config import DEFAULT_DB_CONFIG  # type: ignore
@@ -330,10 +330,12 @@ with left:
                         need_sql = False
                     else:
                         need_sql = bool(generate_sql) or explicit_sql_request
+                    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                     generated_sql = ""
                     if not need_sql:
                         # 更保守的意图检测：只有当用户明确要求查询数据库、写 SQL、或指定表名时才返回 SQL。
                         # 对于常见的数据分析请求（例如：描述数据、计算统计量、作图建议、解释模型结果等），请返回 NO_SQL。
+                       
                         intent_prompt = (
                             "当前时间：" + current_time + "\n"
                             "请判断下面的用户请求是否确实需要对数据库表执行查询并返回结果。"
