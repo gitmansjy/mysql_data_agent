@@ -15,6 +15,8 @@ DATA_ANALYSIS_PROMPT = """
 
 📊 数据列名：{columns}
 
+🕒 当前时间：{current_time}
+
 ❓ 用户问题：{question}
 
 💡 示例输入：
@@ -35,6 +37,17 @@ plt.savefig('{plot_file}')
 
 现在请回答该问题，只返回 Python 代码：
 """.strip()
+
+
+def build_analysis_prompt(columns: str, question: str, plot_file: str) -> str:
+   """返回填充了当前时间的分析 prompt 字符串。
+
+   使用示例：
+      prompt = build_analysis_prompt(columns, question, plot_file)
+   """
+   from datetime import datetime
+   current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+   return DATA_ANALYSIS_PROMPT.format(columns=columns, question=question, plot_file=plot_file, current_time=current_time)
 
 # 兼容旧命名：
 ANALYSIS_PROMPT = DATA_ANALYSIS_PROMPT
